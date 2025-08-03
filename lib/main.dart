@@ -23,7 +23,7 @@ void main() {
         visualDensity: VisualDensity.adaptivePlatformDensity,
         fontFamily: GoogleFonts.lato().fontFamily,
         colorScheme: ColorScheme.fromSwatch(primarySwatch: Colors.blue)
-            .copyWith(background: Colors.white)
+            .copyWith(surface: Colors.white)
             .copyWith(secondary: Colors.blueAccent),
       ),
       home: MyApp(),
