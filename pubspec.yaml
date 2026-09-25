@@ -1,5 +1,5 @@
 name: codelist
-description: A new Flutter project.
+description: Upcoming competitive programming contests from 70+ platforms.
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
@@ -18,7 +18,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 version: 1.0.3+9
 
 environment:
-  sdk: ">=2.12.0 <3.0.0"
+  sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -26,20 +26,23 @@ dependencies:
   http: ^1.0.0
   intl: ^0.18.1
   path_provider: ^2.0.15
-  multi_select_flutter: ^4.1.3
-  add_2_calendar: ^2.2.3
-  google_fonts: ^4.0.5
+  add_2_calendar: ^3.1.1
+  google_fonts: ^8.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   url_launcher: ^6.1.11
   hive_generator: ^2.0.0
   cupertino_icons: ^1.0.5
+  dynamic_color: ^1.9.0
+  package_info_plus: ^10.2.1
+  path: ^1.9.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.4.4
   flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
 
 flutter_launcher_icons:
   android: "launcher_icon"

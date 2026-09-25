@@ -1,0 +1,120 @@
+name: Android Release
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+  workflow_dispatch:
+
+env:
+  # Play already has builds up to version code 9 (pubspec `1.0.3+9`), and a new
+  # workflow's run_number starts at 1. Version codes must keep increasing.
+  VERSION_CODE_OFFSET: 100
+
+jobs:
+  build:
+    name: Build, Test & Sign
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create clist.by credentials
+        # lib/data/credentials.dart is gitignored; generate it from secrets.
+        env:
+          CLIST_USERNAME: ${{ secrets.CLIST_USERNAME }}
+          CLIST_API_KEY: ${{ secrets.CLIST_API_KEY }}
+        run: |
+          if [ -z "$CLIST_USERNAME" ] || [ -z "$CLIST_API_KEY" ]; then
+            echo "::error::CLIST_USERNAME and CLIST_API_KEY secrets are required."
+            exit 1
+          fi
+          cat > lib/data/credentials.dart <<EOF
+          String username = '${CLIST_USERNAME}';
+          String key = '${CLIST_API_KEY}';
+          EOF
+
+      - name: Download Android keystore
+        id: android_keystore
+        uses: timheuer/base64-to-file@v1.0.3
+        with:
+          fileName: upload-keystore.jks
+          encodedString: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Create key.properties
+        # Secrets go through env vars, not inline `${{ }}`, so the shell never
+        # expands `$`, backticks or quotes inside passwords. Backslashes are
+        # doubled because .properties files treat them as escapes.
+        env:
+          STORE_FILE: ${{ steps.android_keystore.outputs.filePath }}
+          STORE_PASSWORD: ${{ secrets.STOREPASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEYPASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEYALIAS }}
+        run: |
+          esc() { printf '%s' "$1" | sed 's/\\/\\\\/g'; }
+          {
+            printf 'storeFile=%s\n' "$(esc "$STORE_FILE")"
+            printf 'storePassword=%s\n' "$(esc "$STORE_PASSWORD")"
+            printf 'keyPassword=%s\n' "$(esc "$KEY_PASSWORD")"
+            printf 'keyAlias=%s\n' "$(esc "$KEY_ALIAS")"
+          } > android/key.properties
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "zulu"
+          java-version: "17"
+          cache: gradle
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.5"
+          channel: "stable"
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Set build version code from run number
+        run: |
+          version_name=$(grep -m1 '^version:[[:space:]]*[0-9]' pubspec.yaml | sed -E 's/^version:[[:space:]]*//' | cut -d '+' -f1)
+          if [ -z "$version_name" ]; then
+            echo "::error::Could not parse 'version: X.Y.Z' from pubspec.yaml. Keep it on a single line."
+            exit 1
+          fi
+          version_code=$(( ${{ github.run_number }} + VERSION_CODE_OFFSET ))
+          sed -i "s/^version:.*/version: ${version_name}+${version_code}/" pubspec.yaml
+          echo "Building ${version_name} (${version_code})"
+
+      - name: Start Android Release Build
+        run: flutter build appbundle
+
+      - name: Upload Android Release
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: build/app/outputs/bundle/release/app-release.aab
+
+  deploy:
+    name: Deploy Android Build
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - name: Get Android Build from artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release
+      - name: Release Build to production track
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_ACCOUNT_KEY }}
+          packageName: developer.rohitsaw.codelist
+          releaseFiles: app-release.aab
+          track: production
+          status: completed

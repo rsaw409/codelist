@@ -56,7 +56,5 @@ class ContestAdapter extends TypeAdapter<Contest> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ContestAdapter &&
-          runtimeType == other.runtimeType &&
-          typeId == other.typeId;
+      other is ContestAdapter && runtimeType == other.runtimeType && typeId == other.typeId;
 }

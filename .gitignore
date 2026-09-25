@@ -41,7 +41,7 @@ app.*.symbols
 app.*.map.json
 
 # api credientials
-credientials.dart
+lib/data/credentials.dart
 
 #key related
 key.jks
